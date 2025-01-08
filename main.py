@@ -4,6 +4,7 @@ import logging
 from aiogram import Bot, Dispatcher
 
 from config import TOKEN
+from database.db import init_db
 from handlers import handlers
 
 logging.basicConfig(level=logging.INFO)
@@ -14,6 +15,8 @@ dp = Dispatcher()
 def main():
     # Регистрируем обработчики команд
     dp.include_router(handlers.router)
+
+    init_db()
 
     # Запускаем бота
     asyncio.run(start_bot())
