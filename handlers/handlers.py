@@ -1,153 +1,120 @@
-from aiogram import Router, types, F
-from aiogram.filters import Command, CommandObject, StateFilter
-from aiogram.fsm.context import FSMContext
-
+import datetime
+import os
+import asyncio
+from aiogram import Router, types, F , Dispatcher
+from aiogram.filters import Command
+from aiogram.types import FSInputFile
+from yt_dlp import YoutubeDL
 from config import FREE_LINK_LIMIT
-from database.db import SessionLocal
-from database.tables import User, Link
 from keyboards.keyboards import main_menu_keyboard
-from states import AddLink
+
 
 router = Router()
 
+DOWNLOAD_DIR = "downloads"
+USER_LINK_COUNT = {}
 
 @router.message(Command('start'))
 async def start_command(message: types.Message):
     """
-    Команда-обработчик для просмотра стартовой информации.
+    Команда-обработчик для стартового сообщения.
     """
-    session = SessionLocal()
-    user = session.query(User).filter_by(telegram_id=message.from_user.id).first()
-    if not user:
-        user = User(telegram_id=message.from_user.id)
-        session.add(user)
-        session.commit()
-        await message.reply("Привет! Я помогу сохранить твои ссылки.\n"
-                            "Используй /add для добавления ссылки.", reply_markup=main_menu_keyboard())
-    else:
-        await message.reply("С возвращением! Используй /add для добавления ссылки.", reply_markup=main_menu_keyboard())
-    session.close()
-
+    await message.reply("Привет! Отправь мне ссылку на видео, и я помогу скачать его.",
+                        reply_markup=main_menu_keyboard())
 
 @router.message(Command('help'))
-@router.message(F.data == 'help')
+@router.message(F.text.lower() == "помощь")
 async def help_command(message: types.Message):
+    await message.reply("Этот бот создан для скачивания видео по ссылке.",
+                        reply_markup=main_menu_keyboard())
+
+@router.message(Command('add'))
+@router.message(F.text.lower() == "введите ссылку")
+async def add_command(message: types.Message):
+    await message.reply("вставьте ссылку пожалуйста.",
+                            reply_markup=main_menu_keyboard())
+
+@router.message(Command('creator'))
+@router.message(F.text.lower() == "создатель")
+async def add_command(message: types.Message):
+    await message.reply("Моё имя Степан,сделаем интернет чуть чуть анонимнее.",
+                            reply_markup=main_menu_keyboard())
+
+@router.message(Command('how_to_work'))
+@router.message(F.text.lower() == "как работает бот")
+async def how_to_work_command(message: types.Message):
+    await message.reply("Работа,данного бота очень проста,вы отправляете ссылку видео,он отправляет вам готовый файл,что бы вы могли скачать его.",
+                            reply_markup=main_menu_keyboard())
+
+@router.message(Command('day_of_week'))
+@router.message(F.text.lower() == "узнать день недели")
+async def show_current_day_of_week(message: types.Message):
+    await message.reply(f"Сегодня {days_of_week[current_day_of_week]}")
+days_of_week = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
+current_day_of_week = datetime.datetime.now().weekday()
+
+
+@router.message(Command('time'))
+@router.message(F.text.lower() == "узнать время")
+async def show_current_time(message: types.Message):
+    current_time = datetime.datetime.now().strftime("%H:%M:%S")
+    await message.reply(f"Текущее время: {current_time}")
+
+
+@router.message(F.text)
+async def download_video_from_url(message: types.Message):
     """
-    Команда-обработчик для просмотра справочной информации.
+    Обработчик для скачивания видео с Rutube
     """
-    await message.reply('Бот позволяет: TODO')
+    user_id = message.from_user.id
+    url = message.text.strip()
 
-
-@router.message(Command('add'), StateFilter(None))
-@router.message(F.data == 'add')
-@router.message(F.text.lower() == "добавить")
-@router.message(F.text.lower() == "добавить ссылку")
-async def add_url_command(message: types.Message, state: FSMContext):
-    """
-    Обработчик добавления ссылки.
-    """
-
-    await message.answer(
-        "Напишите URL"
-    )
-    await state.set_state(AddLink.choosing_url)
-    return
-
-    # # Если не переданы никакие аргументы, то
-    # # command.args будет None
-    # if command is not None:
-    #     if command.args is None:
-    #
-    #     # Пробуем разделить аргументы на две части по первому встречному пробелу
-    #     try:
-    #         url, name = command.args.split(" ", maxsplit=1)
-    #     # Если получилось меньше двух частей, вылетит ValueError
-    #     except ValueError:
-    #         await message.answer(
-    #             "Ошибка: неправильный формат команды. Пример:\n"
-    #             "/add <url> <name>"
-    #         )
-    #         return
-    #
-    # session = SessionLocal()
-    # user = session.query(User).filter_by(telegram_id=message.from_user.id).first()
-    #
-    # if not user:
-    #     await message.reply("Сначала используй /start для регистрации.")
-    #     session.close()
-    #     return
-    #
-    # if not user.is_premium and len(user.links) >= FREE_LINK_LIMIT:
-    #     await message.reply(f"У вас уже {FREE_LINK_LIMIT} ссылок. "
-    #                         "Оформите премиум, чтобы добавить больше.")
-    #     session.close()
-    #     return
-    #
-    # # Save link to the database
-    # new_link = Link(url=url, title=name, user=user)
-    # session.add(new_link)
-    # session.commit()
-    #
-    # session.close()
-
-
-@router.message(
-    AddLink.choosing_url,
-)
-async def add_link_url(message: types.Message, state: FSMContext):
-    await state.update_data(url=message.text.lower())
-    await message.answer(
-        text="Спасибо. Теперь, пожалуйста, напишите имя."
-    )
-    await state.set_state(AddLink.choosing_name)
-
-
-@router.message(
-    AddLink.choosing_name,
-)
-async def add_link_name(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    name = message.text.lower()
-
-    session = SessionLocal()
-    user = session.query(User).filter_by(telegram_id=message.from_user.id).first()
-
-    link = session.query(Link).filter_by(url=data['url']).first()
-    if link:
-        await message.reply('Данная ссылка уже есть в БД.\nДобавление отменено.')
-        await state.clear()
+    # Проверка, что ссылка правильная
+    if not url:
+        await message.reply("Пожалуйста, отправьте корректную ссылку на видео.")
         return
 
-    # Save link to the database
-    new_link = Link(url=data['url'], title=name, user=user)
-    session.add(new_link)
-    session.commit()
-
-    await message.answer(
-        text="Спасибо! Данные сохранены."
-    )
-    await state.clear()
-
-
-@router.message(Command('links'))
-@router.message(F.data == 'links')
-@router.message(F.text.lower() == "ссылки")
-async def links_command(message: types.Message):
-    """
-    Обработчик просмотра ссылок.
-    """
-    session = SessionLocal()
-    user = session.query(User).filter_by(telegram_id=message.from_user.id).first()
-
-    if not user:
-        await message.reply("Сначала используй /start для регистрации.")
-        session.close()
+    # Проверка лимита ссылок для пользователя
+    if user_id not in USER_LINK_COUNT:
+        USER_LINK_COUNT[user_id] = 0
+    if USER_LINK_COUNT[user_id] >= FREE_LINK_LIMIT:
+        await message.reply("Вы достигли лимита скачиваний для бесплатных ссылок.")
         return
 
-    if not user.links:
-        await message.reply("У вас ещё нет ссылок. Добавьте с помощью /add.")
-    else:
-        links_text = "\n".join([f"{link.title}: {link.url}" for link in user.links])
-        await message.reply(f"Ваши ссылки:\n{links_text}")
+    try:
+        # Скачиваем видео
+        video_path = await download_video(url)
 
-    session.close()
+        # Отправляем файл пользователю
+        video_file = FSInputFile(video_path)
+        await message.reply_document(video_file)
+
+        # Увеличиваем счетчик ссылок для пользователя
+        USER_LINK_COUNT[user_id] += 1
+
+        # Удаляем скачанный файл после отправки
+        os.remove(video_path)
+    except Exception as e:
+        await message.reply(f"Произошла ошибка при скачивании видео: {e}")
+
+
+async def download_video(url: str) -> str:
+    """
+    Функция для скачивания видео с любого сайта, поддерживаемого yt-dlp.
+    """
+    options = {
+        'format': 'best',
+        'outtmpl': f'{DOWNLOAD_DIR}/%(title)s.%(ext)s',
+        'noplaylist': True,
+        'force_generic_extractor': True,
+        'socket-timeout': 30,  # Увеличение времени ожидания
+    }
+
+    if not os.path.exists(DOWNLOAD_DIR):
+        os.makedirs(DOWNLOAD_DIR)
+
+    with YoutubeDL(options) as ydl:
+        info = ydl.extract_info(url, download=True)
+        return ydl.prepare_filename(info)
+
+

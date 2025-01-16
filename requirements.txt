@@ -2,4 +2,5 @@ asyncio
 aiogram
 environs
 requests
-SQLAlchemy
+pip
+yt_dlp
