@@ -4,3 +4,4 @@ environs
 requests
 pip
 yt_dlp
+sqlalchemy
