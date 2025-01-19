@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    restart: always
+    command: python main.py
+    environment:
+      - BOT_TOKEN
+      - BOT_PAY_TOKEN
