@@ -2,6 +2,7 @@
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
+from aiogram.types import BotCommand
 
 from config import TOKEN
 from database.db import init_db
@@ -11,6 +12,23 @@ logging.basicConfig(level=logging.INFO)
 
 bot = Bot(TOKEN)
 dp = Dispatcher()
+
+async def set_bot_commands(bot: Bot):
+    """
+    Устанавливает команды для бота.
+
+    :param bot: Экземпляр бота.
+    """
+    commands = [
+        BotCommand(command="start", description="Начать работу с ботом"),
+        BotCommand(command="help", description="помощь"),
+        BotCommand(command="time", description="узнать время"),
+        BotCommand(command="add", description="введите ссылку"),
+        BotCommand(command="day_of_week", description="узнать день недели"),
+        BotCommand(command="creator", description="создатель"),
+    ]
+    await bot.set_my_commands(commands)
+
 
 def main():
     # Регистрируем обработчики команд
@@ -28,6 +46,7 @@ async def start_bot():
     """
     await bot.delete_webhook(drop_pending_updates=True)
 
+    await set_bot_commands(bot)
     try:
         await dp.start_polling(bot)
     except (KeyboardInterrupt, SystemExit):
